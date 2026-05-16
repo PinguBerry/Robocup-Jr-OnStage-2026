@@ -34,13 +34,19 @@ void d2b(){
 }
 
 void d3p(){
-  s10.write(40, 250, true);
-  s10.write(180, 250, true);
+  s10.write(40, 200, true);
+  delay(100);
+
+  s10.write(180, 200, true);
+  delay(100);
 }
 
 void d3b(){
-  s10.write(10, 70, true);
-  s10.write(180, 70, true);
+  s10.write(0, 200, true);
+  delay(500);
+
+  s10.write(180, 200, true);
+  delay(500);
 }
 
 void setup() {
@@ -50,6 +56,10 @@ void setup() {
   s8.attach(8); //declara pino digital utilizado
   s9.attach(9);
   s10.attach(10);
+
+  s8.write(180, 50, true);
+  s9.write(180, 50, true);
+  s10.write(180, 50, true);
 
   stepper.setMaxSpeed(5000);
 
@@ -72,46 +82,66 @@ void setup() {
 }
 
 float passos(float dist){//com base no motor 3
-  return (6400 * dist)/16.15;
+  return (3200 * dist)/8.00;
 }
 
 float distancia(const char* tecla){
-  if(tecla == "E1") return 25.44;
-  if(tecla == "FA#") return 23.40;
-  if(tecla == "SOL#") return 21.00;
-  if(tecla == "A1") return 20.00;
-  if(tecla == "B1") return 17.70;
-  if(tecla == "DO#") return 15.60;
-  if(tecla == "D2") return 14.40;
+  if(tecla == "E1") return 35.70;
+  if(tecla == "FA#") return 33.60;
+  if(tecla == "SOL#") return 31.40;
+  if(tecla == "A1") return 30.30;
+  if(tecla == "B1") return 28.10;
+  if(tecla == "DO#") return 26.00;
+  if(tecla == "D2") return 24.80;
+
+  return -1;
 }
 
 void move(int dedo, const char* tecla){
 
   if(dedo == 1){
     stepper.runToNewPosition(passos(distancia(tecla) - dif1));
+
   } else if(dedo == 2){
     stepper.runToNewPosition(passos(distancia(tecla) - dif2));
+
   } else if(dedo == 3){
     stepper.runToNewPosition(passos(distancia(tecla)));
+    delay(1000);
+    
+    if(tecla == "E1" or tecla == "A1" or tecla == "B1" or tecla == "D2"){
+      d3b();
+    }
+    if(tecla == "FA#" or tecla == "SOL#" or tecla == "DO#"){
+      d3p();
+    }
   }
 
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-  //stepper.runToNewPosition(3962.84); //do meio anda 13,63cm      +- 0,2 de erro
 
-  // BASE NO MOTOR 3
-  //e1 - 25.44 
-  //fa# - 23.40 
-  //sol# - 21.00 
-  //a1 - 20.00 
-  //b1 - 17.70  
-  //do#2 - 15.60 
-  //d2 - 14.40 
+  move(3, "E1");
+  move(3, "FA#");
+  move(3, "SOL#");
+  move(3, "A1");
+  move(3, "B1");
+  move(3, "DO#");
+  move(3, "D2");
 
-  move(1, "E1");
+ /* move(3, "E1");
+  //delay(500);
+  move(3, "FA#");
+  move(3, "A1");
+  move(3, "A1");
+  move(3, "A1");
+  move(3, "B1");
+  move(3, "DO#");
+  move(3, "A1");
+  move(3, "A1"); 
 
-  //d1b(); 
+  delay(500); */
+
+  //d1b();
 
 }

@@ -1,8 +1,11 @@
 #include <VarSpeedServo.h>
 #include <AccelStepper.h>
 
-#define STEP_PIN 3
-#define DIR_PIN 4
+#define STEP_PIN 22
+#define DIR_PIN 24
+
+/*#define STEP_PIN 3
+#define DIR_PIN 4*/
 
 float dif2 = 3.70;
 float dif1 = 7.45;
@@ -15,44 +18,48 @@ VarSpeedServo s10;
 AccelStepper stepper(AccelStepper::DRIVER, STEP_PIN, DIR_PIN);
 
 void d1p(){
-  s8.write(40, 250, true);
-  s8.write(180, 250, true);
+  s8.write(110, 200, true);
+  delay(50);
+  s8.write(155, 250, true);
 }
 
 void d1b(){
-  s8.write(0, 150, true);
-  s8.write(180, 150, true);
+  s8.write(45, 200, true);
+  delay(50);
+  s8.write(155, 250, true);
 }
 
 void d2p(){
-  s9.write(40, 70, true);
-  s9.write(180, 70, true);
+  s9.write(110, 200, true);
+  delay(50);
+  s9.write(155, 250, true);
 }
 void d2b(){
-  s9.write(0, 200, true);
-  s9.write(180, 200, true);
+  s9.write(45, 200, true);
+  delay(50);
+  s9.write(155, 250, true);
 }
 
 void d3p(){
-  s10.write(40, 200, true);
-  delay(100);
+  s10.write(110, 200, true);
+  delay(50);
 
-  s10.write(180, 200, true);
-  delay(100);
+  s10.write(155, 250, true);
+  //delay(100);
 }
 
 void d3b(){
-  s10.write(0, 200, true);
-  delay(500);
+  s10.write(45, 200, true);
+  delay(50);
 
-  s10.write(180, 200, true);
-  delay(500);
+  s10.write(155, 250, true);
+  //delay(500);
 }
 
 void setup() {
   Serial.begin(9600);
-  pinMode(6, INPUT_PULLUP);
-  // put your setup code here, to run once:
+  pinMode(26, INPUT_PULLUP);
+
   s8.attach(8); //declara pino digital utilizado
   s9.attach(9);
   s10.attach(10);
@@ -61,19 +68,19 @@ void setup() {
   s9.write(180, 50, true);
   s10.write(180, 50, true);
 
-  stepper.setMaxSpeed(5000);
+  stepper.setMaxSpeed(30000);
 
   //----------- HOMING --------------
 
-  stepper.setSpeed(-4000);
+  stepper.setSpeed(-9500);
 
-  while (digitalRead(6) == HIGH) {//low é apertado
+  while (digitalRead(26) == HIGH) {//low é apertado
     stepper.runSpeed();
   }
 
   stepper.setCurrentPosition(0);
 
-  stepper.setAcceleration(1200);//4000  // 
+  stepper.setAcceleration(15000);//4000
 
   s8.write(180, 70, true);
   s9.write(180, 70, true);
@@ -101,13 +108,24 @@ void move(int dedo, const char* tecla){
 
   if(dedo == 1){
     stepper.runToNewPosition(passos(distancia(tecla) - dif1));
+    if(tecla == "E1" or tecla == "A1" or tecla == "B1" or tecla == "D2"){
+      d1b();
+    }
+    if(tecla == "FA#" or tecla == "SOL#" or tecla == "DO#"){
+      d1p();
+    }
 
   } else if(dedo == 2){
     stepper.runToNewPosition(passos(distancia(tecla) - dif2));
+    if(tecla == "E1" or tecla == "A1" or tecla == "B1" or tecla == "D2"){
+      d2b();
+    }
+    if(tecla == "FA#" or tecla == "SOL#" or tecla == "DO#"){
+      d2p();
+    }
 
   } else if(dedo == 3){
     stepper.runToNewPosition(passos(distancia(tecla)));
-    delay(1000);
     
     if(tecla == "E1" or tecla == "A1" or tecla == "B1" or tecla == "D2"){
       d3b();
@@ -120,28 +138,35 @@ void move(int dedo, const char* tecla){
 }
 
 void loop() {
-
+  //s10.write(125,70, true);
+  //delay(100);
+  //s10.write(180, 70, true);
+  //delay(100);
+  //s10.write(180, 200, true);
+  
+  /*move(3, "E1");
   move(3, "E1");
   move(3, "FA#");
   move(3, "SOL#");
   move(3, "A1");
   move(3, "B1");
   move(3, "DO#");
-  move(3, "D2");
-
- /* move(3, "E1");
-  //delay(500);
-  move(3, "FA#");
-  move(3, "A1");
-  move(3, "A1");
-  move(3, "A1");
+  move(3, "D2");*/
+  move(1, "E1");
+  move(1, "E1");
+  move(2, "FA#");
+  move(2, "A1");
+  move(2, "A1");
+  move(2, "A1");
   move(3, "B1");
   move(3, "DO#");
-  move(3, "A1");
-  move(3, "A1"); 
+  move(2, "A1");
+  move(2, "A1");
 
-  delay(500); */
+  //move(3, "E1");
+  //move(3, "E1");
+  //move(3, "A1");
 
-  //d1b();
+  //d1b();*/
 
 }

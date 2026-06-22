@@ -1,274 +1,334 @@
+ // ARDUINO MEGA 
+
 #include <VarSpeedServo.h>
 #include <AccelStepper.h>
 
-#define STEP_PIN 3//22
-#define DIR_PIN 2//24
+#define STEP_PIN 22
+#define DIR_PIN 24
 
-
+// Calibration offsets between fingers to align with piano keys
 float dif2 = 3.70;
-float dif1 = 7.45;
+float dif1 = 7.15;
 
-VarSpeedServo s8; // cria o objeto servo
-int angulo = 0; // declara origem do angulo como 0°
+// Servo objects representing robotic fingers
+VarSpeedServo s8;
 VarSpeedServo s9;
 VarSpeedServo s10;
 
+int angulo = 0;
+
+// Structure representing a musical note (type + duration)
+struct Notas{
+  int tipo;
+  int duracao;
+};
+
+// Sequence of note types and durations (melody definition)
+Notas tipos[] = {{1, 10}, {1, 10}, {1, 10}, {1, 10}, {1, 10}, {1, 10}, {1, 10}, {1, 10}, {1, 10}, {1, 10},
+{1, 10}, {1, 10}, {1, 10}, {1, 10}, {1, 10}, {1, 10}, {1, 10}, {1, 10}, {1, 10}, {1, 10}, {1, 10}};
+
+// Musical score (notes to be played in sequence)
+const char* cifra[] = {"E1", "E1", "FA#", "A1", "A1", "A1", "B1", "DO#", "A1", "A1",
+"E1", "E1", "FA#", "A1", "A1", "A1", "B1", "B1", "DO#", "B1", "B1"};
+
+// Indicates whether a note is black key (1) or white key (0)
+bool cifra2[] = {0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1};
+
+// Servo “open position” (finger lifted above keys)
+int ap = 155;
+
+// Finger press positions (black and white keys)
+int np = 110;
+int nb = 40;
+
+// Stepper motor controlling horizontal finger positioning
 AccelStepper stepper(AccelStepper::DRIVER, STEP_PIN, DIR_PIN);
 
+// =========================
+// FINGER ACTION FUNCTIONS
+// =========================
 
-void d1p(){
-  s8.write(110, 200, true);
-  delay(50);
-  s8.write(155, 250, true);
+// Finger 1 press on white key
+void d1p(int tipo, int duracao){
+  if(tipo == 1){
+    s8.write(np, 200, true);
+    delay(duracao);
+    s8.write(ap, 250, true); // release
+  }
 }
 
-void d1b(){
-  s8.write(0, 200, true);
-  delay(50);
-  s8.write(155, 250, true);
+// Finger 1 press on black key
+void d1b(int tipo, int duracao){
+  if(tipo == 1){
+    s8.write(nb, 250, true);
+    delay(duracao);
+    s8.write(ap, 250, true);
+  }
 }
 
-void d2p(){
-  s9.write(110, 200, true);
-  delay(50);
-  s9.write(155, 250, true);
+// Finger 2 press on white key
+void d2p(int tipo, int duracao){
+  if(tipo == 1){
+    s9.write(np, 200, true);
+    delay(duracao);
+    s9.write(ap, 250, true);
+  }
 }
 
-void d2b(){
-  s9.write(45, 200, true);
-  delay(50);
-  s9.write(155, 250, true);
+// Finger 2 press on black key
+void d2b(int tipo, int duracao){
+  if(tipo == 1){
+    s9.write(nb, 250, true);
+    delay(duracao);
+    s9.write(ap, 250, true);
+  }
 }
 
-void d3p(){
-  s10.write(110, 200, true);
-  delay(50);
-
-  s10.write(155, 250, true);
-  //delay(100);
+// Finger 3 press on white key
+void d3p(int tipo, int duracao){
+  if(tipo == 1){
+    s10.write(np, 200, true);
+    delay(duracao);
+    s10.write(ap, 250, true);
+  }
 }
 
-void d3b(){
-  s10.write(45, 200, true);
-  delay(50);
-
-  s10.write(155, 250, true);
-  //delay(500);
+// Finger 3 press on black key
+void d3b(int tipo, int duracao){
+  if(tipo == 1){
+    s10.write(nb, 250, true);
+    delay(duracao);
+    s10.write(ap, 250, true);
+  }
 }
+
+
+// =========================
+// SETUP (INITIALIZATION + HOMING)
+// =========================
 
 void setup() {
-  Serial.begin(9600);
-  pinMode(6, INPUT_PULLUP);
 
-  s8.attach(8); //declara pino digital utilizado
+  delay(5000);
+
+  Serial1.begin(9600);
+
+  // Limit switch used for homing calibration
+  pinMode(26, INPUT_PULLUP);
+
+  // Attach servo motors to pins
+  s8.attach(8);
   s9.attach(9);
   s10.attach(10);
 
+  // Move all fingers to safe starting position
   s8.write(180, 50, true);
   s9.write(180, 50, true);
   s10.write(180, 50, true);
 
-  stepper.setMaxSpeed(20000);//1000000
+  // Configure stepper motor speed
+  stepper.setMaxSpeed(20000);
 
-  //----------- HOMING --------------
+  // =========================
+  // HOMING PROCEDURE
+  // =========================
 
   stepper.setSpeed(5000);
 
-  while (digitalRead(6) == HIGH) {//low é apertado
+  // Move until limit switch is triggered
+  while (digitalRead(26) == HIGH) {
     stepper.runSpeed();
   }
 
+  // Reset stepper reference position
   stepper.setCurrentPosition(0);
 
-  stepper.setAcceleration(10000);//2000000 
+  stepper.setAcceleration(20000);
 
+  // Reposition fingers after homing
   s8.write(180, 70, true);
   s9.write(180, 70, true);
   s10.write(180, 70, true);
-
 }
 
-float passos(float dist){//com base no motor 3
-  return -((6400 * dist)/31.90);
+
+// =========================
+// POSITION MAPPING FUNCTIONS
+// =========================
+
+// Convert physical distance into stepper motor steps
+float passos(float dist){
+  return -((6400 * dist)/32.00);
 }
 
+// Map musical note to physical position on keyboard
 float distancia(const char* tecla){
-  if(tecla == "E1") return 35.50;
-  if(tecla == "FA#") return 33.40;
-  if(tecla == "SOL#") return 31.20;
-  if(tecla == "A1") return 30.10;
-  if(tecla == "B1") return 27.90;
-  if(tecla == "DO#") return 25.80;
-  if(tecla == "D2") return 24.60;
+  if(tecla == "E1") return 35.70;
+  if(tecla == "FA#") return 33.60;
+  if(tecla == "SOL#") return 31.50;
+  if(tecla == "A1") return 30.40;
+  if(tecla == "B1") return 28.10;
+  if(tecla == "DO#") return 26.00;
+  if(tecla == "D2") return 24.90;
 
   return -1;
 }
 
+
+// Move selected finger to target key position
 void move(int dedo, const char* tecla){
 
   if(dedo == 1){
     stepper.runToNewPosition(passos(distancia(tecla) - dif1));
-    if(tecla == "E1" or tecla == "A1" or tecla == "B1" or tecla == "D2"){
-      d1b();
-    }
-    if(tecla == "FA#" or tecla == "SOL#" or tecla == "DO#"){
-      d1p();
-    }
 
   } else if(dedo == 2){
     stepper.runToNewPosition(passos(distancia(tecla) - dif2));
-    if(tecla == "E1" or tecla == "A1" or tecla == "B1" or tecla == "D2"){
-      d2b();
-    }
-    if(tecla == "FA#" or tecla == "SOL#" or tecla == "DO#"){
-      d2p();
-    }
 
   } else if(dedo == 3){
     stepper.runToNewPosition(passos(distancia(tecla)));
-    
-    if(tecla == "E1" or tecla == "A1" or tecla == "B1" or tecla == "D2"){
-      d3b();
-    }
-    if(tecla == "FA#" or tecla == "SOL#" or tecla == "DO#"){
-      d3p();
-    }
   }
-
 }
 
+
+// Execute pressing motion depending on key type (black/white)
+void toca(int dedo, const char* tecla, int tipo, int duracao){
+
+  if(dedo == 1){
+
+    if(tecla == "E1" or tecla == "A1" or tecla == "B1" or tecla == "D2"){
+      d1b(tipo, duracao);
+    }
+
+    if(tecla == "FA#" or tecla == "SOL#" or tecla == "DO#"){
+      d1p(tipo, duracao);
+    }
+
+  } else if(dedo == 2){
+
+    if(tecla == "E1" or tecla == "A1" or tecla == "B1" or tecla == "D2"){
+      d2b(tipo, duracao);
+    }
+
+    if(tecla == "FA#" or tecla == "SOL#" or tecla == "DO#"){
+      d2p(tipo, duracao);
+    }
+
+  } else if(dedo == 3){
+
+    if(tecla == "E1" or tecla == "A1" or tecla == "B1" or tecla == "D2"){
+      d3b(tipo, duracao);
+    }
+
+    if(tecla == "FA#" or tecla == "SOL#" or tecla == "DO#"){
+      d3p(tipo, duracao);
+    }
+  }
+}
+
+
+// =========================
+// STATE VARIABLES
+// =========================
+
+float pos[] = {7.45, 3.70, 0}; // current finger positions
+float dif[] = {7.45, 3.70, 0};
+
+
+// =========================
+// MAIN LOOP (MUSIC PLAYBACK + OPTIMIZATION)
+// =========================
+
 void loop() {
-  //s10.write(125,70, true);
-  //delay(100);
-  //s10.write(180, 70, true);
-  //delay(100);
-  //s10.write(180, 200, true);
 
-  move(3, "FA#");
+  // Iterate through full musical sequence
+  for(int i = 0; i < 21; i++){
 
-  /*move(2, "E1");
-  move(2, "FA#");
-  move(2, "SOL#");
-  move(2, "A1");
-  move(2, "B1");
-  move(2, "DO#");
-  move(2, "D2");*/
-  /*move(2, "E1");
-  move(2, "E1");
-  move(2, "FA#");
-  move(2, "A1");
-  move(2, "A1");
-  move(2, "A1");
-  move(2, "B1");
-  move(2, "DO#");
-  move(2, "A1");
-  move(2, "A1");
-  //making up a song about coralinee
-  delay(500);
+    float melhorcusto = 9999999;
+    int melhordedo = 0;
 
-  move(2, "E1");
-  move(2, "E1");
-  move(2, "FA#");
-  //shes a peach
+    // Evaluate best finger for current note
+    for(int dedo = 0; dedo < 3; dedo++){
 
-  delay(500);
+      float pos0[3]; for(int j = 0; j < 3; j++) pos0[j] = pos[j];
 
-  move(2, "A1");
-  move(2, "A1");
-  move(2, "A1");
+      float cus0 = abs(pos0[dedo] - distancia(cifra[i]));
 
-  //she's a doll
+      pos0[dedo] = distancia(cifra[i]);
 
-  delay(500);
+      for(int j = 0; j < 3; j++){
+        if(j != dedo){
+          pos0[j] = distancia(cifra[i]) + dif[j] - dif[dedo];
+        }
+      }
 
-  move(2, "B1");
-  move(2, "B1");
-  move(2, "DO#");
+      int id1 = i + 1;
 
-  //she's a pal
+      if(id1 >= 21){
+        if(melhorcusto > cus0){
+          melhorcusto = cus0;
+          melhordedo = dedo;
+        }
+        continue;
+      }
 
-  move(2, "B1");
-  move(2, "B1");
-  
-  //of mine
+      // Lookahead optimization (future note cost prediction)
+      for(int d1 = 0; d1 < 3; d1++){
 
-  delay(500);
+        float pos1[3]; for(int j = 0; j < 3; j++) pos1[j] = pos0[j];
 
-  move(2, "D2");
-  move(2, "D2");
-  move(2, "D2");
+        float cus1 = abs(pos1[d1] - distancia(cifra[id1])) + cus0;
 
-  //she's as cute
+        pos1[d1] = distancia(cifra[id1]);
 
-  move(2, "B1");
-  move(2, "B1");
+        for(int j = 0; j < 3; j++){
+          if(j != d1){
+            pos1[j] = distancia(cifra[id1]) + dif[j] - dif[d1];
+          }
+        }
 
-  //as a
+        int id2 = id1 + 1;
 
-  move(2, "A1");
-  move(2, "A1");
+        if(id2 >= 21){
+          if(melhorcusto > cus1){
+            melhorcusto = cus1;
+            melhordedo = dedo;
+          }
+          continue;
+        }
 
-  //buttom
+        for(int d2 = 0; d2 < 3; d2++){
 
-  move(2, "SOL#");
-  move(2, "SOL#");
+          float cus2 = abs(pos1[d2] - distancia(cifra[id2])) + cus1;
 
-  //in the
+          if(melhorcusto >= cus2){
+            melhorcusto = cus2;
+            melhordedo = dedo;
+          }
+        }
+      }
+    }
 
-  move(2, "A1");
+    // Assign best finger for current note
+    pos[melhordedo] = distancia(cifra[i]);
 
-  //eyes
+    for(int j = 0; j < 3; j++){
+      if(j != melhordedo){
+        pos[j] = distancia(cifra[i]) + dif[j] - dif[melhordedo];
+      }
+    }
 
-  move(2, "DO#");
+    melhordedo = melhordedo + 1;
 
-  //of
+    // Execute movement + press
+    move(melhordedo, cifra[i]);
 
-  move(2, "B1");
-  move(2, "B1");
+    if(cifra2[i] == 1){
+      Serial1.println("3");
+      Serial1.println("1");
+    }
 
-  //everyone
+    toca(melhordedo, cifra[i], tipos[i].tipo, tipos[i].duracao);
 
-  move(2, "A1");
-  move(2, "A1");
-
-  //who
-
-  move(2, "SOL#");
-  move(2, "SOL#");
-
-  //ever 
-
-
-  move(2, "FA#");
-  move(2, "FA#");
-
-  //laid their
-
-  move(2, "E1");
-
-  //eyes
-
-  move(2, "FA#");
-
-  //on
-
-  move(2, "A1");
-
-  move(2, "SOL#");
-
-  move(2, "A1");
-
-  //coralinee
-
-
-  delay(2000000);
-
-
-
-  //move(3, "E1");
-  //move(3, "E1");
-  //move(3, "A1");
-
-  //d1b();*/
-
+    delay(2000);
+  }
 }

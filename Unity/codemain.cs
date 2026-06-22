@@ -3,24 +3,29 @@ using System.Collections.Generic;
 using System.IO.Ports;
 using UnityEngine;
 
-public class codemain: MonoBehaviour
+public class cacetinho: MonoBehaviour
 {
+    // =========================
+    // GAME OBJECT REFERENCES
+    // =========================
+
     public GameObject fantasmas;
     public GameObject fantasmashappy;
     public GameObject cenariofora1;
-    
+
     public GameObject cenariofora2;
     public GameObject salabellman;
     public GameObject salabellmannormal;
     public GameObject portal;
     public GameObject chuvinhaa;
 
-    public GameObject coralinebase;   
+    public GameObject coralinebase;
     public GameObject coralinebasebotao;
     public GameObject branco;
     public GameObject olhos;
     public GameObject botao;
 
+    // Audio sources for different narrative moments
     public GameObject audio1;
     public GameObject audio2;
     public GameObject audio3;
@@ -28,24 +33,45 @@ public class codemain: MonoBehaviour
     public GameObject audio5;
     public GameObject audio6;
     public GameObject audio7;
-    
-    SerialPort coraline = new SerialPort("COM13", 9600);
 
-    SerialPort portall = new SerialPort("COM4", 9600);
+    // UI / tracking reference point in the scene
+    [SerializeField] private Transform marcador;
 
+
+    // =========================
+    // SERIAL COMMUNICATION
+    // =========================
+
+    // Serial connections with different Arduino/Raspberry devices
+    SerialPort coraline = new SerialPort("COM15", 9600); // main interaction system (portal)
+    SerialPort portall = new SerialPort("COM7", 9600);    // secondary system (USB / backup)
+    SerialPort gatinho = new SerialPort("COM16", 9600);   // cat interaction system
+
+    // Incoming message buffers
     string men = "";
     string message = "";
+
+
+    // =========================
+    // POSITION VARIABLES
+    // =========================
 
     float x = 0.00f;
     float y = 0.00f;
     float coordx = 0.00f;
     float coordy = 0.00f;
 
+
+    // Flags for parsing serial data
     bool podex = false;
     bool podey = false;
     bool okx = false;
     bool oky = false;
 
+
+    // =========================
+    // STATE CONTROL FLAGS
+    // =========================
 
     bool ok2 = false;
     bool ok3 = false;
@@ -54,226 +80,232 @@ public class codemain: MonoBehaviour
     bool ok6 = false;
     bool ok7 = false;
 
+    bool limpa = true;
+
     bool o = false;
     bool o1 = false;
 
-
     bool pode = false;
-
     bool inv = false;
 
     int ato = 0;
 
     float tempo = 0f;
-    float tempo2= 0f;
+    float tempo2 = 0f;
     float duracao = 3f;
 
+    bool TargetApareceu = false;
+
+
+    // =========================
+    // SERIAL STATUS CHECK
+    // =========================
+
+    // Debug function to check if serial ports are open
     void Men()
     {
-
-        if (portall.IsOpen)
-        {
-            Debug.Log("Portal is open!");
-        }
+        if (portall.IsOpen) Debug.Log("Portal is open!");
+        if (coraline.IsOpen) Debug.Log("Coraline is open!");
+        if (gatinho.IsOpen) Debug.Log("Gatinho is open!");
     }
 
 
-    void Men2(){
+    // =========================
+    // STORY CONTROL FUNCTIONS
+    // =========================
 
-        if (coraline.IsOpen)
-        {
-            Debug.Log("Coraline is open!");
-        }
-
-    } 
-
-    public void Aparece(){
-                
+    public void Aparece()
+    {
+        // Advances narrative stage with cooldown control
         if (tempo <= 0f)
         {
             ato++;
             tempo = duracao;
-            UnityEngine.Debug.Log(ato);
+            UnityEngine.Debug.Log("coraline +" + ato);
         }
     }
 
-      
-    void OlhoNormal(){
-        Debug.Log("entrei aqui");
+    public void Aparece2()
+    {
+        TargetApareceu = true;
+    }
 
-        try{
+    public void Desaparece()
+    {
+        TargetApareceu = false;
+    }
 
-            if (coraline.BytesToRead > 0){
 
-                //men = coraline.ReadLine();
+    // =========================
+    // SERIAL PARSING (EYE CONTROL)
+    // =========================
 
-                char men = (char) coraline.ReadChar();
+    void OlhoNormal()
+    {
+        Debug.Log("entered eye tracking mode");
 
-                if(men == 'x') okx = true;
-                if(men == 'y') oky = true;
+        try
+        {
+            if (coraline.BytesToRead > 0)
+            {
+                char men = (char)coraline.ReadChar();
 
-                if(oky){
+                // Detect start of X or Y data stream
+                if (men == 'x') okx = true;
+                if (men == 'y') oky = true;
 
-                    if (men == '#'){
-                        Debug.Log("RECEBI Y " + message);
+                // Parse Y value
+                if (oky)
+                {
+                    if (men == '#')
+                    {
+                        Debug.Log("RECEIVED Y " + message);
                         oky = false;
                         y = float.Parse(message);
 
                         message = "";
                         men = ' ';
-
                         podey = true;
-
-                    } else {
+                    }
+                    else
+                    {
                         if (men != 'y') message += men;
                     }
+                }
 
-                } else if (okx){
-
-                    if (men == '#'){//add if aqui --> x ou y!!!!
-                        Debug.Log("RECEBI X " + message);
+                // Parse X value
+                else if (okx)
+                {
+                    if (men == '#')
+                    {
+                        Debug.Log("RECEIVED X " + message);
                         okx = false;
                         x = float.Parse(message);
 
                         message = "";
                         men = ' ';
-
                         podex = true;
-
-                    } else {
+                    }
+                    else
+                    {
                         if (men != 'x') message += men;
                     }
-
                 }
-
-
-            } 
-            
-        } catch {
-            UnityEngine.Debug.Log("<color=#FFFF00> ERRO </color>");
+            }
+        }
+        catch
+        {
+            UnityEngine.Debug.Log("<color=#FFFF00> SERIAL ERROR </color>");
         }
 
-        if(podey){
-
-            if(y >= 0 && y <= 30){
-                
-                coordy = (2*y) - 60;
-
-            } else if(x <= 70){
-
-                coordy = ((60*y) - 1800) / 35;
-            }
+        // Apply Y mapping to UI position
+        if (podey)
+        {
+            coordy = (y >= 0 && y <= 30)
+                ? (2 * y) - 60
+                : ((60 * y) - 1800) / 35;
 
             olhos.GetComponent<RectTransform>().localPosition = new Vector3(0, coordy, 0);
             podey = false;
+        }
 
-        } else if(podex) {
-
-            if(x >= 50 && x <= 90){
-                
-                coordx = ((45*x) - 2250) / (40);
-
-            } else if (x >= 10) {
-
-                coordx = ((-45*x) + 2250) / (-40);
-            }
+        // Apply X mapping to UI position
+        else if (podex)
+        {
+            coordx = (x >= 50 && x <= 90)
+                ? ((45 * x) - 2250) / 40
+                : ((-45 * x) + 2250) / -40;
 
             olhos.GetComponent<RectTransform>().localPosition = new Vector3(coordx, 0, 0);
             podex = false;
-
         }
     }
 
-    void Sala(){
-        try{
 
-            if (coraline.BytesToRead > 0){
+    // =========================
+    // SERIAL PARSING (ROOM SCENE CONTROL)
+    // =========================
 
-                //men = coraline.ReadLine();
+    void Sala()
+    {
+        try
+        {
+            if (coraline.BytesToRead > 0)
+            {
+                char men = (char)coraline.ReadChar();
 
-                char men = (char) coraline.ReadChar();
+                if (men == 'x') okx = true;
+                if (men == 'y') oky = true;
 
-                if(men == 'x') okx = true;
-                if(men == 'y') oky = true;
-
-                if(oky){
-
-                    if (men == '#'){
-                        Debug.Log("RECEBI Y " + message);
+                if (oky)
+                {
+                    if (men == '#')
+                    {
                         oky = false;
                         y = float.Parse(message);
-
                         message = "";
-                        men = ' ';
-
                         podey = true;
-
-                    } else {
-                        if (men != 'y') message += men;
                     }
-
-                } else if (okx){
-
-                    if (men == '#'){//add if aqui --> x ou y!!!!
-                        Debug.Log("RECEBI X " + message);
+                    else if (men != 'y')
+                    {
+                        message += men;
+                    }
+                }
+                else if (okx)
+                {
+                    if (men == '#')
+                    {
                         okx = false;
                         x = float.Parse(message);
-
                         message = "";
-                        men = ' ';
-
                         podex = true;
-
-                    } else {
-                        if (men != 'x') message += men;
                     }
-
+                    else if (men != 'x')
+                    {
+                        message += men;
+                    }
                 }
-
-
-            } 
-            
-        } catch {
-            UnityEngine.Debug.Log("<color=#FFFF00> ERRO </color>");
+            }
+        }
+        catch
+        {
+            UnityEngine.Debug.Log("<color=#FFFF00> SERIAL ERROR </color>");
         }
 
-        if(podey){
-
-            if(y >= 0 && y <= 30){
-                
-                coordy = ((349*y) - 10470) / 30;
-
-            } else if(x <= 70){
-
-                coordy = ((-349*y) + 10470) /  (-30);
-            }
+        // Apply Y mapping for Bellman room object
+        if (podey)
+        {
+            coordy = (y >= 0 && y <= 30)
+                ? ((349 * y) - 10470) / 30
+                : ((-349 * y) + 10470) / -30;
 
             salabellman.GetComponent<RectTransform>().localPosition = new Vector3(0, coordy, 0);
             podey = false;
+        }
 
-        } else if(podex) {
-
-            if(x >= 50 && x <= 90){
-                
-                coordx = ((615*x) - 30750) / (40);
-
-            } else if (x >= 10) {
-                
-                
-                coordx = ((-615*x) + 30750) / (-40);
-                
-            }
+        // Apply X mapping for Bellman room object
+        else if (podex)
+        {
+            coordx = (x >= 30 && x <= 90)
+                ? (((615 * x) - 18450) / 60) - 615
+                : ((615 * x) - 55350) / 40;
 
             salabellman.GetComponent<RectTransform>().localPosition = new Vector3(coordx, 0, 0);
             podex = false;
-
         }
     }
 
+
+    // =========================
+    // INITIALIZATION
+    // =========================
+
     void Start()
     {
+        // Initial UI placement
         salabellman.GetComponent<RectTransform>().localPosition = new Vector3(x, y, 0);
 
+        // Initial scene setup (all elements hidden)
         salabellman.SetActive(false);
         salabellmannormal.SetActive(false);
         chuvinhaa.SetActive(false);
@@ -281,270 +313,152 @@ public class codemain: MonoBehaviour
         olhos.SetActive(false);
         branco.SetActive(false);
         coralinebase.SetActive(false);
+        cenariofora2.SetActive(false);
 
         cenariofora1.SetActive(true);
+
+        // Serial configuration
         coraline.WriteTimeout = 300;
         coraline.ReadTimeout = 120000;
 
+        // Start background audio
         audio1.GetComponent<AudioSource>().Play();
+
+        // Open serial connection
         coraline.Open();
-        portall.Open();
 
         Men();
-        Men2();
     }
 
-    bool okc = false;
+
+    // =========================
+    // MAIN UPDATE LOOP (STORY ENGINE)
+    // =========================
+
     void Update()
     {
-        
-        if (tempo > 0f)
+        tempo2 += Time.deltaTime;
+
+        // Countdown timer for story progression
+        if (tempo > 0f) tempo -= Time.deltaTime;
+
+        // =========================
+        // STORY STAGES (ATO SYSTEM)
+        // =========================
+
+        if (ato == 1)
         {
-            tempo -= Time.deltaTime;
+            // Rain scene activation
+            cenariofora1.SetActive(true);
+            chuvinhaa.SetActive(true);
+            audio1.GetComponent<AudioSource>().Stop();
+
+            if (!okc)
+            {
+                chuvinhaa.GetComponent<ParticleSystem>().Play();
+                okc = true;
+            }
+
+            if (!ok2)
+            {
+                audio2.GetComponent<AudioSource>().Play();
+                ok2 = true;
+            }
+
+            coraline.Write("1");
         }
 
-        
-
-
-            if (ato == 1)//chuva
+        else if (ato == 2)
+        {
+            if (!ok3)
             {
-                cenariofora1.SetActive(true);
-                chuvinhaa.SetActive(true);
-
-                audio1.GetComponent<AudioSource>().Stop();
-                
-
-                if(okc == false){
-                    chuvinhaa.GetComponent<ParticleSystem>().Play();
-                    okc = true;
-                }
-                
-                if(ok2 == false){
-                    audio2.GetComponent<AudioSource>().Play();
-                    ok2 = true;
-                }
-
-                try{
-                    coraline.Write("1");
-                    coraline.Write("1");
-                    coraline.Write("1");
-                } catch {
-                    Debug.Log("erro");
-                }
-                //audio
+                audio3.GetComponent<AudioSource>().Play();
+                ok3 = true;
             }
-            else if (ato == 2)//estender a mão
+
+            coraline.Write("2");
+        }
+
+        else if (ato == 3)
+        {
+            audio3.GetComponent<AudioSource>().Stop();
+            coraline.Write("3");
+        }
+
+        else if (ato == 4)
+        {
+            chuvinhaa.SetActive(false);
+            portal.SetActive(true);
+
+            coraline.Write("4");
+            portall.Write("p");
+        }
+
+        else if (ato == 5)
+        {
+            if (limpa)
             {
-                //audio olá eu sou coraline jones blablabla
-            
-                if(ok3 == false){
-                    audio3.GetComponent<AudioSource>().Play();
-                    ok3 = true;
-                }
-
-                chuvinhaa.GetComponent<ParticleSystem>().Play();
-                
-                try{
-                    coraline.Write("2");
-                    coraline.Write("2");
-                    coraline.Write("2");
-                } catch {
-                    Debug.Log("erro");
-                }
-
+                coraline.DiscardInBuffer();
+                limpa = false;
             }
-            else if (ato == 3)//duvida
-            {   //eu fiquei sabendo que tem algo muito legal na sua casa (atras de uma portinha)
-                //vai lá descobrir
-                audio3.GetComponent<AudioSource>().Stop();
-                chuvinhaa.GetComponent<ParticleSystem>().Play();
 
-                try{
-                    coraline.Write("3");
-                    coraline.Write("3");
-                    coraline.Write("3");
-                } catch {
-                    Debug.Log("erro");
-                }
+            portal.SetActive(false);
+            salabellman.SetActive(true);
 
-            }
-            else if (ato == 4)//portal //PLANO B
+            coraline.Write("5");
+            Sala();
+        }
+
+        else if (ato == 6)
+        {
+            salabellman.SetActive(false);
+            cenariofora2.SetActive(true);
+
+            gatinho.Write("6");
+        }
+
+        else if (ato == 7)
+        {
+            salabellmannormal.SetActive(false);
+            coralinebasebotao.SetActive(true);
+            botao.SetActive(true);
+
+            if (!ok4)
             {
-                chuvinhaa.SetActive(false);
-                chuvinhaa.GetComponent<ParticleSystem>().Stop();
-                portal.SetActive(true);
-
-                try{
-                    coraline.Write("4");
-                    coraline.Write("4");
-                    coraline.Write("4");
-
-                    portall.Write("p");
-                    portall.Write("p");
-                    portall.Write("p");//plano B
-
-                } catch {
-                    Debug.Log("erro");
-                }
-                
-
-            } else if(ato == 5){//zoiando
-
-                portal.SetActive(false);
-                salabellmannormal.SetActive(true);
-
-                //Sala();
+                audio4.GetComponent<AudioSource>().Play();
+                ok4 = true;
             }
-            else if (ato == 6)//presente
+        }
+
+        else if (ato == 8)
+        {
+            fantasmas.SetActive(true);
+
+            if (!ok6)
             {
-                /*try{
-                    
-                    if(coraline.BytesToRead > 0){
-                        char men = (char) coraline.ReadChar();
-
-                        if(men == '8'){//na vdd é 8
-
-                            //salabellman.SetActive(false);
-                            //olhos.SetActive(true);
-                            //coralinebase.SetActive(true);
-                            //branco.SetActive(true);
-
-                            salabellman.SetActive(false);
-                            audio4.GetComponent<AudioSource>().Stop();
-                            
-                            coralinebasebotao.SetActive(true);
-                            botao.SetActive(true);
-
-                            if(ok4 == false){
-                                audio4.GetComponent<AudioSource>().Play();
-                                ok4 = true;
-                            }
-
-                        }
-                    }
-
-                } catch {
-                    Debug.Log("erro");
-                }*/
-                    
-
-
-
-                //OlhoNormal();
-                salabellmannormal.SetActive(false);
-                coralinebasebotao.SetActive(true);
-                botao.SetActive(true);
-
-                if(ok4 == false){
-                    audio4.GetComponent<AudioSource>().Play();
-                    ok4 = true;
-                }
-
-                try{
-                    coraline.Write("5");
-                    coraline.Write("5");//naonaonaonao
-                    coraline.Write("5");
-                } catch {
-                    Debug.Log("erro");
-                }
-
-                //OlhoNormal();
-
-            } /*else if(ato == 7){//olhos botao
-
-                audio4.GetComponent<AudioSource>().Stop();
-                olhos.SetActive(false);
-                branco.SetActive(false);
-                coralinebase.SetActive(false);
-                coralinebasebotao.SetActive(true);
-                botao.SetActive(true);
-            }*/
-            else if (ato == 7)//fantasma
-            {   
-                coralinebasebotao.SetActive(false);
-                botao.SetActive(false);
-                salabellmannormal.SetActive(true);
-                fantasmas.SetActive(true);
-
-                if(ok6 == false){
-                    audio6.GetComponent<AudioSource>().Play();
-                    ok6 = true;
-                }//nos ajude coraline
-
-                //coraline.Write("8");
-                //coraline.Write("8");
-                //coraline.Write("8");
-
+                audio6.GetComponent<AudioSource>().Play();
+                ok6 = true;
             }
-            else if (ato == 8)//tchauzinho
-            {   
-                if(ok5 == false){
-                    audio5.GetComponent<AudioSource>().Play();
-                    ok5 = true;
-                }//vms gnt nos ajude
+        }
 
-                //coraline.Write("9");
-                //coraline.Write("9");
-                //coraline.Write("9");//
+        else if (ato == 9)
+        {
+            if (!ok5)
+            {
+                audio5.GetComponent<AudioSource>().Play();
+                ok5 = true;
+            }
+        }
 
-            }else if (ato == 9)//tchauzinho
-            {   
-                fantasmas.SetActive(false);
-                fantasmashappy.SetActive(true);
+        else if (ato == 10)
+        {
+            fantasmashappy.SetActive(true);
 
-                if(ok7 == false){
-                    audio7.GetComponent<AudioSource>().Play();
-                    ok7 = true;
-                }
-                    
-                /*try{
-                    
-                    if(coraline.BytesToRead > 0){
-                        char men = (char) coraline.ReadChar();
-
-                        if(men == '9'){
-
-                            fantasmas.SetActive(false);
-                            fantasmashappy.SetActive(true);
-
-                            if(ok7 == false){
-                                audio7.GetComponent<AudioSource>().Play();
-                                ok7 = true;
-                            }
-
-                            o1 = true;
-
-                        }
-                    }
-
-                    
-                } catch {
-                    Debug.Log("erro");
-                }*/
-
-
-            } 
-                
-                
-                
-
-                /*fantasmas.SetActive(false);
-                fantasmashappy.SetActive(true);
-
-                if(ok7 == false){
-                    audio7.GetComponent<AudioSource>().Play();
-                    ok7 = true;
-                }//obrigada e tchauzinho 
-
-                try{
-                    coraline.Write("7");
-                    coraline.Write("7");
-                    coraline.Write("7");
-                } catch {
-                    Debug.Log("erro");
-                }*
-
-            }*/
-
+            if (!ok7)
+            {
+                audio7.GetComponent<AudioSource>().Play();
+                ok7 = true;
+            }
+        }
     }
 }
